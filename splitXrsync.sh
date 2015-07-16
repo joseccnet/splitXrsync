@@ -10,7 +10,8 @@ localdir="~/mylocaldir" #Ejem: ~/mylocaldir , o tambien: /home/userjhon/mylocald
 numprocesos=4 #numero de procesos o hilos concurrentes para sincronizar con rsync.
 sizesplitfile="30M" #Tamano de pedazo de rchivo en Megabytes. Ejem: 50M , 512M , 1024M , etc.
 bwlimit="--bwlimit=1024" #Limite en Kbps, por proceso.
-optsrsync1="$bwlimit -azPhc --partial-dir=$localdir/tmprsync --progress"
+sshport=22
+optsrsync1="$bwlimit -azPhc --partial-dir=$localdir/tmprsync --progress --rsh='ssh -p $sshport'"
 optsrsync2="--remove-source-files" #**ATENCION!!!** Eliminará los archivos remotos. Opcion predeterminada.
 
 if [ "$localdir" == "" -o "$remotedir" == "" -o "$remotesshaccount" == "" ] ; then
@@ -26,7 +27,7 @@ function myrsync(){
    yellow='\033[1;33m'
    blue='\033[0;34m'
    NC='\033[0m' # No Color
-   echo -e "${yellow}+${NC}$1${yellow}+${NC}" && rsync $optsrsync1 $remotesshaccount:$remotedir/$1 $localdir/$1 && echo -e "${blue}++${NC}$1${blue}++${NC}" && rsync $optsrsync1 $optsrsync2 $remotesshaccount:$remotedir/$1 $localdir/$1 && echo -e "+++${red}$1${NC}+++ ${green}Done!${NC}"
+   echo -e "${yellow}+${NC}$1${yellow}+${NC}" && eval "rsync $optsrsync1 $remotesshaccount:$remotedir/$1 $localdir/$1" && echo -e "${blue}++${NC}$1${blue}++${NC}" && eval "rsync $optsrsync1 $optsrsync2 $remotesshaccount:$remotedir/$1 $localdir/$1" && echo -e "+++${red}$1${NC}+++ ${green}Done!${NC}"
    [ "$?" != "0" ] && exit -1
 
    #Junta los pedazos de archivos:
@@ -79,7 +80,7 @@ EOF
 IFS=$' '
 comandosremotos=$(echo $comandosremotosTemplate | sed -e "s/REMOTEDIR/$remotedirscaped/g" -e "s/SIZESPLITFILE/$sizesplitfile/g")
 echo -e "Conectando al servidor remoto y haciendo 'split' a los archivos...\n"
-files=$(ssh $remotesshaccount "$comandosremotos" | sed -e 's/\.\///g' -e 's/ /\n/g')
+files=$(ssh -p $sshport $remotesshaccount "$comandosremotos" | sed -e 's/\.\///g' -e 's/ /\n/g')
 
 echo -e "\nSe incronizaran los siguientes archivos de ${sizesplitfile}B cada uno:\n"
 echo "$files" | sed ':a;N;$!ba;s/\n/ , /g'
